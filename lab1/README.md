@@ -17,16 +17,21 @@
 
 ## Part 1 — Component Diagram (30%)
 
-### Task 
-Show system components, their responsibilities, and interactions.
-### Components
+### Task
+Create a **Component Diagram** that shows:
+- system components,
+- their responsibilities,
+- interactions between them.
+
+### Required components
 - Client (Web / Mobile)
 - Backend API
-- Authentication Service
 - Message Service
 - Database
-- Delivery Mechanism (Queue / WebSocket / Push Service)
+- Delivery mechanism (Queue / WebSocket / Push)
 
+
+```mermaid
 graph LR
   Client --> API
   API --> AuthService
@@ -35,14 +40,19 @@ graph LR
   MessageService --> Queue
   Queue --> DeliveryService
   DeliveryService --> Client
+```
 
 ---
 
 ## Part 2 — Sequence Diagram (25%)
 
 ### Scenario
-- User A sends a message to user B who is offline.
-  
+User **A sends a message** to user **B who is offline**.
+
+### Task
+Describe the interaction sequence in time.
+
+```mermaid
 sequenceDiagram
   participant A as User A
   participant Client
@@ -60,16 +70,18 @@ sequenceDiagram
   API-->>Client: 202 Accepted
   Queue->>Delivery: attempt delivery
   Delivery-->>Client B: deliver when online
+```
 
 ---
 
 ## Part 3 — State Diagram (20%)
 
 ### Object
-- Message
+`Message`
 ### Task
-- Describe the message lifecycle.
+Describe the **message lifecycle**
 
+```mermaid
 stateDiagram-v2
   [*] --> Created
   Created --> Sent
@@ -78,6 +90,7 @@ stateDiagram-v2
   Sent --> Failed
   Failed --> Retried
   Retried --> Sent
+```
 
 ---
 
@@ -86,6 +99,7 @@ stateDiagram-v2
 ### Topic
 - Message delivery strategy for online and offline users
 
+```markdown
 # RFC: Message Delivery Strategy
 
 ## Context
@@ -104,13 +118,14 @@ Use asynchronous delivery with a message queue and client acknowledgements.
 ## Consequences
 + Reliable delivery
 - Higher infrastructure complexity
+```
 
 ---
 
 ## Part 5 — ADR (Architecture Decision Record) (10%)
 
 ### Architecture Decision
-
+```markdown
 # ADR-001: Use Message Queue for Delivery
 
 ## Status
@@ -123,3 +138,4 @@ Message delivery will be handled asynchronously using a queue.
 - Messages survive client disconnects
 - Delivery reliability improved
 - Additional infrastructure required
+```
