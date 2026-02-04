@@ -55,21 +55,28 @@ Describe the interaction sequence in time.
 ```mermaid
 sequenceDiagram
   participant A as User A
-  participant Client
+  participant ClientA as Client A
   participant API
   participant Msg as Message Service
   participant DB
   participant Queue
   participant Delivery
+  participant ClientB as Client B
 
-  A->>Client: Send message
-  Client->>API: POST /messages
+  A->>ClientA: Send message
+  ClientA->>API: POST /messages
   API->>Msg: createMessage()
   Msg->>DB: save(message)
   Msg->>Queue: enqueue delivery
-  API-->>Client: 202 Accepted
+  API-->>ClientA: 202 Accepted
   Queue->>Delivery: attempt delivery
-  Delivery-->>Client B: deliver when online
+  alt Client B offline
+      Delivery-->>Queue: retry later
+  else Client B online
+      Delivery-->>ClientB: deliver message
+      ClientB-->>Delivery: ack received
+      Delivery->>Msg: update status Delivered
+  end
 ```
 
 ---
@@ -109,15 +116,19 @@ Users can be online or offline when messages are sent.
 Messages must not be lost and delivery status must be reliable.
 
 ## Proposed Solution
-Use asynchronous delivery with a message queue and client acknowledgements.
+- Use asynchronous delivery with a message queue.
+- Client B sends **acknowledgement** after receiving a message.
+- Messages remain in the queue until ack is received.
+- Retry delivery for offline users until successful.
 
 ## Alternatives
 - Direct delivery only (rejected)
 - Client polling (considered)
 
 ## Consequences
-+ Reliable delivery
-- Higher infrastructure complexity
++ Reliable delivery even if user is offline
++ Delivery status tracked accurately
+- Higher infrastructure complexity due to queue and retry logic
 ```
 
 ---
