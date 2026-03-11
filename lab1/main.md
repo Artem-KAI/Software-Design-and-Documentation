@@ -100,24 +100,24 @@ stateDiagram-v2
 - Message delivery strategy for online and offline users
 
 ```markdown
-# RFC: Message Delivery Strategy
+# RFC: Стратегія доставки повідомлень
 
-## Context
-Users can be online or offline when messages are sent.
+## Контекст
+Користувачі можуть бути онлайн або офлайн під час надсилання повідомлень.
 
-## Problem
-Messages must not be lost and delivery status must be reliable.
+## Проблема
+Повідомлення не повинні втрачатися, а статус доставки має бути надійним.
 
-## Proposed Solution
-Use asynchronous delivery with a message queue and client acknowledgements.
+## Запропоноване рішення
+Використовуйте асинхронну доставку з чергою повідомлень та підтвердженнями клієнта.
 
-## Alternatives
-- Direct delivery only (rejected)
-- Client polling (considered)
+## Альтернативи
+- Тільки пряма доставка (відхилено)
+- Опитування клієнта (розглядається)
 
-## Consequences
-+ Reliable delivery
-- Higher infrastructure complexity
+## Наслідки
++ Надійна доставка
+- Вища складність інфраструктури
 ```
 
 ---
@@ -126,16 +126,16 @@ Use asynchronous delivery with a message queue and client acknowledgements.
 
 ### Architecture Decision
 ```markdown
-# ADR-001: Use Message Queue for Delivery
+# ADR-001: Використовувати чергу повідомлень для доставки
 
-## Status
-Accepted
+## Статус
+Прийнято
 
-## Decision
-Message delivery will be handled asynchronously using a queue.
+## Рішення
+Доставка повідомлень буде оброблятися асинхронно за допомогою черги.
 
-## Consequences
-- Messages survive client disconnects
-- Delivery reliability improved
-- Additional infrastructure required
+## Наслідки
+- Повідомлення зберігаються навіть після відключення клієнта
+- Покращено надійність доставки
+- Потрібна додаткова інфраструктура
 ```
