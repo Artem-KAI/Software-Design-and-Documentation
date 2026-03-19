@@ -169,6 +169,46 @@ Key principles:
 3. **Reliability** — acknowledgments guarantee correctness
 
 ---
+---
+
+## 🔑 Key Questions and Answers
+
+### ❓ Who updates message status?
+
+Message status is updated by both the server and the client.
+
+* The server sets the initial status `Sent` when the message is stored in the database.
+* The client is responsible for sending acknowledgements:
+
+  * `Delivered` is sent automatically when the message is received
+  * `Read` is sent when the user opens the chat
+
+The Status Service processes these updates and persists them in the database.
+
+**Summary:**
+
+* Server → `Sent`
+* Client → `Delivered`, `Read`
+
+---
+
+### ❓ What happens if acknowledgements are missing?
+
+If acknowledgements are missing, the system cannot confirm delivery or read status.
+
+In this case, the message remains in the `Sent` state.
+
+To handle this situation, the system implements:
+
+* Retry logic (client resends acknowledgements)
+* Timeouts (TTL — Time To Live)
+
+The client continues sending acknowledgements until it receives confirmation from the server.
+
+This approach ensures **eventual consistency** of message states in the system.
+
+---
+
 
 ## 🛡️ Defense Preparation
 
