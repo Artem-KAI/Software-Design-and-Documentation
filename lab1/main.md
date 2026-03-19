@@ -1,141 +1,199 @@
-# 🧪 Laboratory Work 1
-## Designing a Messaging System
+# 🧪 Laboratory Work 1: Messaging System Design
 
-## 🔹 Variant 1 — Basic One-to-One Messaging
-**Focus:** basic system architecture
-
-**Requirements:**
-- One user sends messages to another user
-- No group chats
-- Online and offline users supported
-
-**Key questions:**
-- Where are messages stored?
-- How is delivery guaranteed?
+## Variant 2 — Message Status Tracking
 
 ---
 
-## Part 1 — Component Diagram (30%)
+## 🎯 Goal
 
-### Task
-Create a **Component Diagram** that shows:
-- system components,
-- their responsibilities,
-- interactions between them.
+Design a distributed messaging system with reliable **message lifecycle management** and **status synchronization** (`sent`, `delivered`, `read`) between clients.
 
-### Required components
-- Client (Web / Mobile)
-- Backend API
-- Message Service
-- Database
-- Delivery mechanism (Queue / WebSocket / Push)
+The system must ensure **consistency**, **fault tolerance**, and **real-time updates** in a mobile environment.
 
+---
+
+## 🧩 Functional Requirements
+
+1. Support 1-to-1 messaging between users
+2. Support offline delivery (store-and-forward pattern)
+3. Track message states:
+
+   * `Sent` — stored in the database
+   * `Delivered` — received by recipient device
+   * `Read` — viewed by recipient
+4. Provide real-time updates via WebSockets
+
+---
+
+## 🧱 Part 1 — Component Diagram
+
+The architecture separates message handling from status tracking to improve scalability and performance.
 
 ```mermaid
-graph LR
-  Client --> API
-  API --> AuthService
-  API --> MessageService
-  MessageService --> DB[(Messages DB)]
-  MessageService --> Queue
-  Queue --> DeliveryService
-  DeliveryService --> Client
+graph TD
+    subgraph Clients
+        ClientA[Sender]
+        ClientB[Recipient]
+    end
+
+    subgraph Backend
+        API[API Gateway]
+        MS[Message Service]
+        SS[Status Service]
+        WS[WebSocket Service]
+    end
+
+    DB[(Database)]
+
+    ClientA --> API
+    ClientB --> API
+    
+    API --> MS
+    API --> SS
+    
+    MS --> DB
+    SS --> DB
+    
+    MS --> WS
+    SS --> WS
+    
+    WS -.-> ClientB
+    WS -.-> ClientA
 ```
+
+**Design Decision:**
+
+* `Message Service` handles message storage
+* `Status Service` handles frequent updates
+* Separation allows independent scaling
 
 ---
 
-## Part 2 — Sequence Diagram (25%)
+## 🔄 Part 2 — Sequence Diagram
 
-### Scenario
-User **A sends a message** to user **B who is offline**.
-
-### Task
-Describe the interaction sequence in time.
+### Scenario: Delivery and Read Receipt
 
 ```mermaid
 sequenceDiagram
-  participant A as User A
-  participant Client
-  participant API
-  participant Msg as Message Service
-  participant DB
-  participant Queue
-  participant Delivery
+    participant A as Sender
+    participant WS as WebSocket
+    participant SS as Status Service
+    participant DB as Database
+    participant B as Recipient
 
-  A->>Client: Send message
-  Client->>API: POST /messages
-  API->>Msg: createMessage()
-  Msg->>DB: save(message)
-  Msg->>Queue: enqueue delivery
-  API-->>Client: 202 Accepted
-  Queue->>Delivery: attempt delivery
-  Delivery-->>Client B: deliver when online
+    Note over B: User comes online
+    B->>WS: Connect (Auth)
+    WS->>SS: User Online Event
+    SS->>DB: Fetch pending messages
+    DB-->>SS: Message list
+    SS->>WS: Push Message (ID: 123)
+    WS->>B: Receive Message
+
+    Note right of B: Background ACK
+    B->>SS: Update status (DELIVERED)
+    SS->>DB: Save Delivered
+    SS->>WS: Notify Sender
+    WS-->>A: Delivered
+
+    Note over B: User opens chat
+    B->>SS: Update status (READ)
+    SS->>DB: Save Read
+    SS->>WS: Notify Sender
+    WS-->>A: Read
 ```
 
 ---
 
-## Part 3 — State Diagram (20%)
-
-### Object
-`Message`
-### Task
-Describe the **message lifecycle**
+## 🔁 Part 3 — State Diagram
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Created
-  Created --> Sent
-  Sent --> Delivered
-  Delivered --> Read
-  Sent --> Failed
-  Failed --> Retried
-  Retried --> Sent
+    [*] --> Sent
+    Sent --> Delivered
+    Delivered --> Read
+
+    Sent --> Failed
+    Failed --> Sent
+
+    note right of Read
+        Final successful state
+    end note
 ```
 
 ---
 
-## Part 4 — RFC (Request for Comments) (15%)
+## 🏗️ Part 4 — ADR-002: Explicit Client Acknowledgments
 
-### Topic
-- Message delivery strategy for online and offline users
+### Status
 
-```markdown
-# RFC: Стратегія доставки повідомлень
+Accepted
 
-## Контекст
-Користувачі можуть бути онлайн або офлайн під час надсилання повідомлень.
+### Context
 
-## Проблема
-Повідомлення не повинні втрачатися, а статус доставки має бути надійним.
+Server-side delivery does not guarantee that a message is received by the client due to network issues or application failures.
 
-## Запропоноване рішення
-Використовуйте асинхронну доставку з чергою повідомлень та підтвердженнями клієнта.
+### Decision
 
-## Альтернативи
-- Тільки пряма доставка (відхилено)
-- Опитування клієнта (розглядається)
+Use explicit client acknowledgments:
 
-## Наслідки
-+ Надійна доставка
-- Вища складність інфраструктури
-```
+* Client sends `DELIVERED` after receiving message
+* Client sends `READ` when message becomes visible
+
+### Alternatives
+
+* Implicit delivery — unreliable
+* Polling — inefficient
+
+### Consequences
+
+* High reliability
+* Accurate status tracking
+* Better user experience
+
+- Additional network requests
+- Increased database load
 
 ---
 
-## Part 5 — ADR (Architecture Decision Record) (10%)
+## 💡 Design Explanation
 
-### Architecture Decision
-```markdown
-# ADR-001: Використовувати чергу повідомлень для доставки
+This system follows an **event-driven architecture**:
 
-## Статус
-Прийнято
+* Events trigger immediate updates
+* WebSockets ensure real-time communication
 
-## Рішення
-Доставка повідомлень буде оброблятися асинхронно за допомогою черги.
+Key principles:
 
-## Наслідки
-- Повідомлення зберігаються навіть після відключення клієнта
-- Покращено надійність доставки
-- Потрібна додаткова інфраструктура
-```
+1. **Consistency** — all clients see the same message state
+2. **Decoupling** — services scale independently
+3. **Reliability** — acknowledgments guarantee correctness
+
+---
+
+## 🛡️ Defense Preparation
+
+**1. What if the app is deleted before reading the message?**
+Status remains `Delivered` — correct behavior.
+
+**2. Why separate Status Service?**
+Status updates are more frequent → better scalability.
+
+**3. How detect Failed state?**
+Using timeout (TTL) and retry logic.
+
+**4. Can message go from Sent → Read instantly?**
+Technically yes, but logically passes through Delivered.
+
+**5. What if ACK is lost?**
+Client retries sending ACK until confirmed.
+
+---
+
+## ✅ Conclusion
+
+A distributed messaging system with reliable message tracking was designed.
+
+The architecture ensures consistency and real-time updates using WebSockets and explicit acknowledgments.
+Separation of services improves scalability and system performance.
+
+The system successfully supports offline delivery and accurate message state synchronization.
