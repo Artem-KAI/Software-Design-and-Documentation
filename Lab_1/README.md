@@ -58,6 +58,7 @@ User **A sends** a message; **User B** receives and reads it, triggering a statu
 ### Task
 Describe the interaction sequence in time for message delivery and read confirmation.
 
+```mermaid
 sequenceDiagram
     participant A as User A (Sender)
     participant S as Server (WS/API)
@@ -74,6 +75,7 @@ sequenceDiagram
     B->>S: Send "Read Receipt" (msg_id: 101)
     S->>S: Update DB (Status: Read)
     S->>A: Push Update: READ (Seen by B)
+```
 
 ---
 
