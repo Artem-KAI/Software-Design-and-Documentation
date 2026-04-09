@@ -57,6 +57,49 @@ def setup_routes(app):
                      (msg_id, data['conversation_id'], data['sender_id'], data['text'], timestamp))
         conn.commit()
         return jsonify({"id": msg_id, "status": "sent"}), 201
+    
+    @app.route('/messages/read', methods=['PATCH'])
+    def mark_as_read():
+        data = request.json
+        conv_id = data.get('conversation_id')
+        user_id = data.get('user_id') # Хто прочитав
+        
+        conn = get_db()
+        # Позначаємо прочитаними всі повідомлення в цьому чаті, 
+        # де відправник НЕ є поточною людиною (тобто чужі повідомлення)
+        conn.execute('''
+            UPDATE messages 
+            SET status = 'read' 
+            WHERE conversation_id = ? AND sender_id != ? AND status = 'sent'
+        ''', (conv_id, user_id))
+        
+        conn.commit()
+        return jsonify({"status": "updated"}), 200
+
+    @app.route('/conversations/public', methods=['GET'])
+    def get_public_conversations():
+        conn = get_db()
+        # Знаходимо всі чати, де is_group = 1
+        chats = conn.execute('SELECT * FROM conversations WHERE is_group = 1').fetchall()
+        return jsonify([dict(c) for c in chats])
+
+    @app.route('/conversations/join', methods=['POST'])
+    def join_conversation():
+        data = request.json
+        conv_id = data.get('conversation_id')
+        user_id = data.get('user_id')
+        
+        conn = get_db()
+        # Перевіряємо, чи юзер вже там
+        existing = conn.execute('SELECT * FROM participants WHERE conversation_id = ? AND user_id = ?', 
+                                (conv_id, user_id)).fetchone()
+        
+        if not existing:
+            conn.execute('INSERT INTO participants (conversation_id, user_id) VALUES (?, ?)', 
+                         (conv_id, user_id))
+            conn.commit()
+            
+        return jsonify({"status": "joined"}), 200
 
     @app.route('/conversations/<conv_id>/messages', methods=['GET'])
     def get_messages(conv_id):
